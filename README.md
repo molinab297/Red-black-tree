@@ -1,2 +1,2 @@
 # Red-black-tree
-out of boredom.. templated red black tree implementation in c++ 
+out of boredom.. templated Red Black Tree implementation in c++ 
