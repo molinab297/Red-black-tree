@@ -4,7 +4,7 @@ Out of boredom.. templated Red Black Tree implementation in c++
 
 Data structure specs: 
 
-Algorithm	\n	Average	   Worst Case
+Algorithm	 	Average	   Worst Case
 Space		      O(n)	      O(n)
 Search		  O(log n)	  O(log n)
 Insert		  O(log n)	  O(log n)
