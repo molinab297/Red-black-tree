@@ -2,15 +2,22 @@
 #ifndef BSTPRACTICE_RBT_H
 #define BSTPRACTICE_RBT_H
 
+#include <iostream>
+#include <queue>
+
+using namespace std;
+
+
+enum Color{BLACK = 0, RED = 1};
 template <class T>
-struct rbtNode{rbtNode<T> *left, *right, *parent; T data; bool color;}; // 0 = black, 1 = red
+struct rbtNode{rbtNode<T> *left, *right, *parent; T data; Color color;}; // 0 = black, 1 = red
 
 template <class T>
 class RBT{
 
 public:
     RBT();
-    virtual ~RBT();
+    ~RBT();
 
     void insert(T key);
     void bfs();
@@ -22,14 +29,19 @@ public:
 
 private:
     rbtNode<T> *root;
+    int DrawTreePrivate(rbtNode<T> *tree, int is_left, int offset, int depth, char s[20][255]);
+
+    /* helper functions */
     rbtNode<T> *createLeaf(T data);
     rbtNode<T> *findGrandparent(rbtNode<T>* node);
     rbtNode<T> *findUncle(rbtNode<T>* node);
-    rbtNode<T> *searchForNodePrivate(T key);
-    int DrawTreePrivate(rbtNode<T> *tree, int is_left, int offset, int depth, char s[20][255]);
+    rbtNode<T> *findSibling(rbtNode<T>* node);
+    rbtNode<T> *searchForNode(T key);
+    rbtNode<T> *inorderPredecessor(rbtNode<T> *removenode);
 
     /* restructuring & recoloring methods */
     void recolor(rbtNode<T>* x);
+    void fixDoubleblack(rbtNode<T>* current);
     void swapColors(rbtNode<T>* a, rbtNode<T> *b);
     void restructure(rbtNode<T> *x);
     void fixRoot();
@@ -40,6 +52,11 @@ private:
     void rotateLeftLeft(rbtNode<T> *x, rbtNode<T> *parent, rbtNode<T> *grandparent);
     void rotateLeftRight(rbtNode<T> *x, rbtNode<T> *parent, rbtNode<T> *grandparent);
     void rotateRightLeft(rbtNode<T> *x, rbtNode<T> *parent, rbtNode<T> *grandparent);
+    bool isLeaf(rbtNode<T> *current) const;
+    bool NodeHasRedChild(rbtNode<T> *current) const;
+    void removeLeaf(rbtNode<T> *leafnode);
+    void removeRoot(rbtNode<T> *rootnode);
+
 };
 
 template <class T>
@@ -60,7 +77,7 @@ template <class T>
 void RBT<T>::insert(T key) {
     if(isEmpty()) {
         root = createLeaf(key);
-        root->color = 0;
+        root->color = BLACK;
     }
     else{
         rbtNode<T> *curr{root}, *trail{nullptr};
@@ -209,33 +226,77 @@ void RBT<T>::rotateRightLeft(rbtNode<T> *x, rbtNode<T> *parent, rbtNode<T> *gran
 
 template <class T>
 void RBT<T>::recolor(rbtNode<T> *x) {
-        x->parent->color = 0;
+        x->parent->color = BLACK;
         rbtNode<T> *uncle = findUncle(x);
         if(uncle)
-            uncle->color = 0;
+            uncle->color = BLACK;
         rbtNode<T> *grandparent = findGrandparent(x);
         if(grandparent) {
-            grandparent->color = 1;
+            grandparent->color = RED;
             if(root == grandparent)
-                grandparent->color = 0;
+                grandparent->color = BLACK;
         }
         fixTree(grandparent); // move up tree
 }
 
 template <class T>
 void RBT<T>::swapColors(rbtNode<T> *a, rbtNode<T> *b) {
-    bool temp = a->color; a->color = b->color; b->color = temp;
+    Color temp = a->color; a->color = b->color; b->color = temp;
 }
+
 
 template <class T>
 bool RBT<T>::remove(T key) {
+    rbtNode<T> *removenode = searchForNode(key);
 
+    if(!removenode)
+        return false;
+    else if(isLeaf(removenode))
+        removeLeaf(removenode);
+    else
+        removeRoot(removenode);
+    return true;
 }
 
 template <class T>
+void RBT<T>::fixDoubleblack(rbtNode<T>* current){
+    rbtNode<T>*sibling = findSibling(current);
+    if(sibling){
+        if(sibling->color == BLACK){
+            if(NodeHasRedChild(sibling)){
+
+            }
+            else{ // node must have black children
+
+            }
+        }
+        else{ // sibling must be red
+
+        }
+    }
+    else{
+        // treat as if node has a black sibling
+    }
+}
+
+template <class T>
+bool RBT<T>::NodeHasRedChild(rbtNode<T> *current) const{
+    if(!current)
+        return false;
+    if(current->left)
+        if(current->left->color == RED)
+            return true;
+    if(current->right)
+        if(current->right->color == RED)
+            return true;
+    return false;
+}
+
+
+template <class T>
 bool RBT<T>::search(T key) {
-    rbtNode<T> *current = searchForNodePrivate(key);
-    if(current)
+    rbtNode<T> *searchNode = searchForNode(key);
+    if(searchNode)
         return true;
     return false;
 }
@@ -254,15 +315,15 @@ rbtNode<T>*RBT<T>::createLeaf(T data) {
     newNode->left   = nullptr;
     newNode->right  = nullptr;
     newNode->parent = nullptr;
-    newNode->color  = 1;
+    newNode->color  = RED;
     return newNode;
 }
 
 template <class T>
-rbtNode<T>*RBT<T>::searchForNodePrivate(T key) {
-    if(this->isEmpty())
+rbtNode<T>*RBT<T>::searchForNode(T key) {
+    if(isEmpty())
         return nullptr;
-    rbtNode<T> *curr = this->root;
+    rbtNode<T> *curr = root;
     bool found = false;
     while(curr && !found){
         if(key > curr->data)
@@ -298,6 +359,16 @@ rbtNode<T>* RBT<T>::findUncle(rbtNode<T> *node) {
 }
 
 template <class T>
+rbtNode<T>* RBT<T>::findSibling(rbtNode<T>* node){
+    if(!node || !node->parent)
+        return nullptr;
+    if(node->parent->left == node)
+        return node->parent->right;
+    else
+        return node->parent->left;
+}
+
+template <class T>
 void RBT<T>::bfs() {
     if(!isEmpty()) {
         std::queue<rbtNode<T> *> queue;
@@ -312,7 +383,7 @@ void RBT<T>::bfs() {
                 queue.push(temp->right);
 
             std::cout << temp->data;
-            temp->color == 0 ? std::cout << "(black) " : std::cout << "(red) ";
+            temp->color == BLACK ? std::cout << "(black) " : std::cout << "(red) ";
         }
     }
 }
@@ -369,7 +440,101 @@ int RBT<T>::DrawTreePrivate(rbtNode<T> *tree, int is_left, int offset, int depth
     return left + width + right;
 }
 
+template <class T>
+rbtNode<T> *RBT<T>::inorderPredecessor(rbtNode<T> *removenode) {
+    if(isEmpty())
+        return nullptr;
+    rbtNode<T> *curr = removenode->left;
+    if(!curr)
+        return nullptr;
 
+    while(curr->right){
+        curr = curr->right;
+    }
+    return curr;
+}
 
+template <class T>
+bool RBT<T>::isLeaf(rbtNode<T> *current) const{
+    if(!current->left && !current->right)
+        return true;
+    return false;
+}
+
+template <class T>
+void RBT<T>::removeRoot(rbtNode<T> *rootnode) {
+    // if the node only has a right child only ** needs fixing **
+    if(rootnode->right && !rootnode->left){
+        rbtNode<T> *parent = rootnode->parent;
+
+        /* If the node is red, delete node like a normal BST.
+         * Else if the node is black, correct double blackness.*/
+        if(rootnode->color == RED){
+            if(parent){
+                parent->right == rootnode ? parent->right = rootnode->right : parent->left = rootnode->right;
+                rootnode->right->parent = parent;
+                rootnode->right = nullptr;
+            }
+            else{
+                root = root->right;
+                root->parent = nullptr;
+                rootnode->right = nullptr;
+            }
+        }
+        else{ // Node with only 1 right child is black
+            fixDoubleblack(rootnode);
+        }
+
+        rootnode->parent = nullptr;
+        delete rootnode;
+    }
+
+        // if the node has a left child
+    else {
+        rbtNode<T> *replacement = inorderPredecessor(rootnode);
+        rootnode->data = replacement->data;
+
+        // normal BST delete
+        if(replacement->color == RED) {
+            if (isLeaf(replacement))
+                removeLeaf(replacement);
+            else {
+                rbtNode<T> *parent = replacement->parent;
+                parent->right == replacement ? parent->right = replacement->left : parent->left = replacement->left;
+                replacement->left->parent = parent;
+                replacement->left = nullptr;
+                replacement->parent = nullptr;
+            }
+        }
+        else
+            fixDoubleblack(replacement);
+
+        delete replacement;
+    }
+}
+
+template <class T>
+void RBT<T>::removeLeaf(rbtNode<T> *leafnode) {
+    if(leafnode->parent){
+        rbtNode<T> *parent = leafnode->parent;
+        if(parent->left == leafnode)
+            parent->left = nullptr;
+        else
+            parent->right = nullptr;
+
+        /* If leaf is red, simply disconnect from tree and delete.
+         * If leaf is black, fix blackness then delete. */
+        if(leafnode->color == RED)
+            leafnode->parent = nullptr;
+        else
+            fixDoubleblack(leafnode);
+
+        delete leafnode;
+    }
+    else{
+        delete root;
+        root = nullptr;
+    }
+}
 
 #endif //BSTPRACTICE_RBT_H
